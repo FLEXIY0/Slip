@@ -8,6 +8,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
+import { FfmpegSetup } from "@/components/FfmpegSetup";
 import { VideoPreview } from "@/components/VideoPreview";
 import { TargetSizeSelector } from "@/components/TargetSizeSelector";
 import { QualityIndicator } from "@/components/QualityIndicator";
@@ -64,7 +65,14 @@ export function Compress(c: C) {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.15fr_1fr]">
         {/* Left: source */}
         <div className="flex flex-col gap-4">
-          {!hasFile ? (
+          {!c.engineReady && !hasFile ? (
+            <FfmpegSetup
+              error={c.engineError}
+              checking={c.checkingEngine}
+              onLocate={c.locateFfmpeg}
+              onRetry={c.checkEngine}
+            />
+          ) : !hasFile ? (
             <UploadZone onFile={c.setFile} disabled={working} />
           ) : (
             <VideoPreview file={c.file!} info={c.info} onRemove={c.clear} />
@@ -269,7 +277,7 @@ function ActionBar({ c, working }: { c: C; working: boolean }) {
     <Button
       variant="primary"
       size="lg"
-      disabled={!c.file || !c.info}
+      disabled={!c.file || !c.info || !c.engineReady}
       onClick={c.start}
       className="w-full"
     >

@@ -1,18 +1,56 @@
 //! FFmpeg / ffprobe discovery and version reporting.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
+
+/// User-provided overrides (from Settings > FFmpeg path or the picker).
+#[derive(Default)]
+struct Overrides {
+    ffmpeg: Option<PathBuf>,
+    ffprobe: Option<PathBuf>,
+}
+
+fn overrides() -> &'static Mutex<Overrides> {
+    static OVERRIDES: OnceLock<Mutex<Overrides>> = OnceLock::new();
+    OVERRIDES.get_or_init(|| Mutex::new(Overrides::default()))
+}
+
+/// Record a user-selected ffmpeg path and derive ffprobe from the same folder.
+/// An empty path clears the override (falls back to bundled / PATH).
+pub fn set_custom_path(path: &str) {
+    let mut o = overrides().lock().unwrap();
+    if path.trim().is_empty() {
+        o.ffmpeg = None;
+        o.ffprobe = None;
+        return;
+    }
+    let ffmpeg = PathBuf::from(path);
+    let sibling = ffmpeg
+        .parent()
+        .map(|dir| dir.join(exe_name("ffprobe")))
+        .filter(|p| p.exists());
+    o.ffmpeg = Some(ffmpeg);
+    o.ffprobe = sibling;
+}
 
 /// Resolve the ffmpeg binary. Order of preference:
-///   1. `SLIP_FFMPEG` env var (set from the user's Settings > FFmpeg path)
-///   2. A binary bundled next to the app executable
-///   3. `ffmpeg` on the system PATH
+///   1. User override (Settings > FFmpeg path)
+///   2. `SLIP_FFMPEG` env var
+///   3. A sidecar binary bundled next to the app executable
+///   4. `ffmpeg` on the system PATH
 pub fn ffmpeg_bin() -> PathBuf {
+    if let Some(p) = overrides().lock().unwrap().ffmpeg.clone() {
+        return p;
+    }
     resolve("ffmpeg", "SLIP_FFMPEG")
 }
 
 /// Resolve ffprobe using the same strategy.
 pub fn ffprobe_bin() -> PathBuf {
+    if let Some(p) = overrides().lock().unwrap().ffprobe.clone() {
+        return p;
+    }
     resolve("ffprobe", "SLIP_FFPROBE")
 }
 
@@ -25,7 +63,7 @@ fn resolve(name: &str, env_key: &str) -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             let bundled = dir.join(exe_name(name));
-            if bundled.exists() {
+            if Path::new(&bundled).exists() {
                 return bundled;
             }
         }

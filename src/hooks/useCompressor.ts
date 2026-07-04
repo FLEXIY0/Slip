@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   getEngine,
+  isNative,
   planEncode,
   estimateQualityScore,
   type CompressResult,
@@ -13,6 +14,7 @@ import {
 import { useApp } from "@/lib/store";
 import { toast } from "@/components/ui/toast";
 import { percentSaved } from "@/lib/utils";
+import { nativeSetFfmpegPath, pickFfmpegFile } from "@/lib/native";
 
 export type Phase = "empty" | "ready" | "working" | "done" | "error";
 
@@ -38,9 +40,62 @@ export function useCompressor() {
   const [result, setResult] = React.useState<CompressResult | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
 
+  // Engine readiness — on native this means FFmpeg was resolved.
+  const [engineReady, setEngineReady] = React.useState(!isNative());
+  const [engineError, setEngineError] = React.useState<string | null>(null);
+  const [checkingEngine, setCheckingEngine] = React.useState(false);
+  const setSettings = useApp((s) => s.setSettings);
+  const ffmpegPath = settings.ffmpegPath;
+
   const log = React.useCallback((line: LogLine) => {
     setLogs((prev) => [...prev.slice(-MAX_LOGS), line]);
   }, []);
+
+  // Verify the native engine can find FFmpeg (honouring a custom path).
+  const checkEngine = React.useCallback(async () => {
+    if (!isNative()) {
+      setEngineReady(true);
+      setEngineError(null);
+      return;
+    }
+    setCheckingEngine(true);
+    try {
+      const version = ffmpegPath
+        ? await nativeSetFfmpegPath(ffmpegPath)
+        : await (async () => {
+            const engine = getEngine();
+            await engine.load(log);
+            return "ready";
+          })();
+      log({ ts: Date.now(), level: "info", text: `FFmpeg · ${version}` });
+      setEngineReady(true);
+      setEngineError(null);
+    } catch (err) {
+      setEngineReady(false);
+      setEngineError(String(err));
+    } finally {
+      setCheckingEngine(false);
+    }
+  }, [ffmpegPath, log]);
+
+  React.useEffect(() => {
+    void checkEngine();
+  }, [checkEngine]);
+
+  // Let the user point Slip at an ffmpeg binary via the file picker.
+  const locateFfmpeg = React.useCallback(async () => {
+    try {
+      const picked = await pickFfmpegFile();
+      if (!picked) return;
+      const version = await nativeSetFfmpegPath(picked);
+      setSettings({ ffmpegPath: picked });
+      setEngineReady(true);
+      setEngineError(null);
+      toast.success("FFmpeg connected", version);
+    } catch (err) {
+      toast.error("That file didn't work", String(err));
+    }
+  }, [setSettings]);
 
   const setFile = React.useCallback(
     async (f: File) => {
@@ -233,6 +288,11 @@ export function useCompressor() {
     cancel,
     download,
     share,
+    engineReady,
+    engineError,
+    checkingEngine,
+    checkEngine,
+    locateFfmpeg,
   };
 }
 

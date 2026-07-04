@@ -68,6 +68,7 @@
       "minimumSystemVersion": "10.15"
     },
     "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
       "nsis": { "installMode": "currentUser" }
     }
   },

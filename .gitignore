@@ -12,6 +12,9 @@ dist-ssr
 src-tauri/target
 src-tauri/gen/schemas
 
+# Bundled FFmpeg sidecars (fetched at build time, too large to commit)
+src-tauri/binaries/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

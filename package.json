@@ -12,7 +12,8 @@
     "typecheck": "tsc -b --noEmit",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",

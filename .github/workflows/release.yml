@@ -54,6 +54,13 @@ jobs:
 
       - run: npm ci
 
+      # Windows ships FFmpeg as a bundled sidecar so the installer works with
+      # no separate FFmpeg install. Other platforms resolve it at runtime
+      # (PATH / user-selected path / package dependency on Linux).
+      - name: Fetch FFmpeg sidecar (Windows)
+        if: matrix.os == 'windows-latest'
+        run: node scripts/fetch-ffmpeg.mjs ${{ matrix.target }}
+
       # Build the app. A GitHub Release is only created/published when the
       # workflow runs from a version tag (refs/tags/v*). On branch pushes or
       # manual runs, tagName is empty, so tauri-action just builds — no release,

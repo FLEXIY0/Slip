@@ -24,6 +24,15 @@ fn ffmpeg_version() -> Result<String, String> {
     ffmpeg::version()
 }
 
+/// Point the backend at a user-selected ffmpeg binary (from Settings or the
+/// "Locate ffmpeg" picker). Also derives ffprobe from the same directory.
+/// Returns the ffmpeg version string so the UI can confirm it works.
+#[tauri::command]
+fn set_ffmpeg_path(path: String) -> Result<String, String> {
+    ffmpeg::set_custom_path(&path);
+    ffmpeg::version()
+}
+
 #[tauri::command]
 fn probe_video(path: String) -> Result<VideoInfo, String> {
     probe::probe(&path)
@@ -79,6 +88,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             ffmpeg_version,
+            set_ffmpeg_path,
             probe_video,
             compress_video,
             cancel_job

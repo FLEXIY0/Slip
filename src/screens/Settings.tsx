@@ -12,6 +12,8 @@ import {
   type ThemeMode,
 } from "@/lib/store";
 import { engineLabel, isNative } from "@/engine";
+import { nativeSetFfmpegPath, pickFfmpegFile } from "@/lib/native";
+import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 const THEMES: { value: ThemeMode; label: string }[] = [
@@ -37,6 +39,22 @@ const PRESETS: { value: Preset; label: string; hint: string }[] = [
 export function Settings() {
   const settings = useApp((s) => s.settings);
   const setSettings = useApp((s) => s.setSettings);
+
+  const applyFfmpegPath = async (path: string) => {
+    setSettings({ ffmpegPath: path });
+    if (!isNative()) return;
+    try {
+      const version = await nativeSetFfmpegPath(path);
+      if (path) toast.success("FFmpeg connected", version);
+    } catch (err) {
+      toast.error("FFmpeg not found at that path", String(err));
+    }
+  };
+
+  const browseFfmpeg = async () => {
+    const picked = await pickFfmpegFile();
+    if (picked) void applyFfmpegPath(picked);
+  };
 
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-8 sm:px-8 sm:py-12">
@@ -111,12 +129,14 @@ export function Settings() {
               value={settings.ffmpegPath}
               disabled={!isNative()}
               onChange={(e) => setSettings({ ffmpegPath: e.target.value })}
+              onBlur={(e) => void applyFfmpegPath(e.target.value)}
               className="font-mono text-2xs"
             />
             <Button
               variant="secondary"
               size="icon"
               disabled={!isNative()}
+              onClick={browseFfmpeg}
               aria-label="Browse"
             >
               <FolderOpen className="size-4" />
