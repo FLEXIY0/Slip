@@ -1,4 +1,48 @@
-import { isNative } from "@/engine";
+import { isNative, type MediaInput } from "@/engine";
+
+const VIDEO_EXTS = ["mp4", "mov", "mkv", "webm", "avi", "m4v", "wmv", "flv"];
+
+/** Basename of a path, handling both / and \ separators. */
+export function basename(p: string): string {
+  const parts = p.split(/[\\/]/);
+  return parts[parts.length - 1] || p;
+}
+
+/** Native "open video" picker → returns a real filesystem path. */
+export async function pickVideoFile(): Promise<string | null> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    title: "Choose a video",
+    filters: [{ name: "Video", extensions: VIDEO_EXTS }],
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+/** Subscribe to native OS drag-drop; returns an unlisten function. */
+export async function onNativeFileDrop(handlers: {
+  onDrop: (paths: string[]) => void;
+  onHover?: (over: boolean) => void;
+}): Promise<() => void> {
+  const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+  return getCurrentWebview().onDragDropEvent((event) => {
+    const type = event.payload.type;
+    if (type === "enter" || type === "over") handlers.onHover?.(true);
+    else if (type === "leave") handlers.onHover?.(false);
+    else if (type === "drop") {
+      handlers.onHover?.(false);
+      handlers.onDrop(event.payload.paths);
+    }
+  });
+}
+
+/** Build a playable <video> src for either a web File or a native path. */
+export async function mediaSrc(input: MediaInput): Promise<string> {
+  if (input.file) return URL.createObjectURL(input.file);
+  const { convertFileSrc } = await import("@tauri-apps/api/core");
+  return convertFileSrc(input.path ?? "");
+}
 
 /** Detected host platform, used for the right FFmpeg install hint/link. */
 export type Platform = "windows" | "macos" | "linux" | "web";

@@ -2,6 +2,19 @@
 
 export type EngineKind = "native" | "wasm";
 
+/**
+ * A selected video, abstracted over platform:
+ *  - Web supplies a `File` blob (used by ffmpeg.wasm + object-URL preview).
+ *  - Native (Tauri) supplies a real filesystem `path` (used by FFmpeg +
+ *    the asset-protocol preview). HTML File objects have no path in Tauri v2.
+ */
+export interface MediaInput {
+  name: string;
+  size: number;
+  file?: File;
+  path?: string;
+}
+
 /** Metadata probed from an input video. */
 export interface VideoInfo {
   durationSec: number;
@@ -88,9 +101,9 @@ export interface CompressEngine {
   /** True once the engine is ready to accept jobs. */
   isReady(): boolean;
   load(onLog?: (line: LogLine) => void): Promise<void>;
-  probe(file: File): Promise<VideoInfo>;
+  probe(input: MediaInput): Promise<VideoInfo>;
   compress(
-    file: File,
+    input: MediaInput,
     req: CompressRequest,
     handlers: {
       onProgress?: (p: Progress) => void;

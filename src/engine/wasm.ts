@@ -4,6 +4,7 @@ import type {
   CompressResult,
   EncodePlan,
   LogLine,
+  MediaInput,
   Progress,
   VideoInfo,
 } from "./types";
@@ -46,7 +47,8 @@ export class WasmEngine implements CompressEngine {
     onLog?.({ ts: Date.now(), level: "info", text: "FFmpeg (wasm) ready" });
   }
 
-  async probe(file: File): Promise<VideoInfo> {
+  async probe(input: MediaInput): Promise<VideoInfo> {
+    const file = webFile(input);
     // Use an <video> element for cheap, reliable metadata in the browser.
     const meta = await readVideoMetadata(file);
     this.durationHint = meta.durationSec;
@@ -58,7 +60,7 @@ export class WasmEngine implements CompressEngine {
   }
 
   async compress(
-    file: File,
+    input: MediaInput,
     req: CompressRequest,
     handlers: {
       onProgress?: (p: Progress) => void;
@@ -67,6 +69,7 @@ export class WasmEngine implements CompressEngine {
     },
   ): Promise<CompressResult> {
     if (!this.ff) throw new Error("Engine not loaded");
+    const file = webFile(input);
     const ff = this.ff;
     const { fetchFile } = await import("@ffmpeg/util");
     const plan = planEncode(req);
@@ -158,6 +161,12 @@ function buildArgs(
   }
   args.push("-y", output);
   return args;
+}
+
+/** The wasm engine works on the in-browser File blob. */
+function webFile(input: MediaInput): File {
+  if (!input.file) throw new Error("Web engine needs a File");
+  return input.file;
 }
 
 function extOf(name: string): string {

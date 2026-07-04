@@ -49,7 +49,7 @@ type C = ReturnType<typeof useCompressor>;
 
 export function Compress(c: C) {
   const working = c.phase === "working";
-  const hasFile = !!c.file;
+  const hasFile = !!c.source;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 sm:py-12">
@@ -73,9 +73,9 @@ export function Compress(c: C) {
               onRetry={c.checkEngine}
             />
           ) : !hasFile ? (
-            <UploadZone onFile={c.setFile} disabled={working} />
+            <UploadZone onSelect={c.setSource} disabled={working} />
           ) : (
-            <VideoPreview file={c.file!} info={c.info} onRemove={c.clear} />
+            <VideoPreview input={c.source!} info={c.info} onRemove={c.clear} />
           )}
 
           {hasFile && (c.logs.length > 0 || working) && (
@@ -133,10 +133,11 @@ function SectionLabel({ step, title }: { step: string; title: string }) {
 }
 
 function EstimateCard({ c }: { c: C }) {
-  const { plan, info, targetBytes, qualityScore, result } = c;
+  const { plan, info, targetBytes, qualityScore, result, source } = c;
   const est = result ? result.bytes : plan?.estimatedBytes ?? 0;
   const under = est > 0 && est <= targetBytes;
   const empty = !info;
+  const inputBytes = source ? source.size || info?.sizeBytes || 0 : 0;
 
   return (
     <div className="rounded-xl border border-border bg-bg-subtle p-4">
@@ -161,12 +162,12 @@ function EstimateCard({ c }: { c: C }) {
         >
           {empty ? "—" : formatBytes(est)}
         </span>
-        {c.file && info && (
+        {inputBytes > 0 && info && (
           <span className="flex items-center gap-1.5 text-[13px] text-fg-subtle">
-            <span className="line-through">{formatBytes(c.file.size)}</span>
+            <span className="line-through">{formatBytes(inputBytes)}</span>
             {est > 0 && (
               <span className="font-medium text-fg-muted">
-                −{percentSaved(c.file.size, est)}%
+                −{percentSaved(inputBytes, est)}%
               </span>
             )}
           </span>
@@ -277,7 +278,7 @@ function ActionBar({ c, working }: { c: C; working: boolean }) {
     <Button
       variant="primary"
       size="lg"
-      disabled={!c.file || !c.info || !c.engineReady}
+      disabled={!c.source || !c.info || !c.engineReady}
       onClick={c.start}
       className="w-full"
     >

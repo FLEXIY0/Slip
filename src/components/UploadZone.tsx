@@ -1,22 +1,58 @@
 import * as React from "react";
 import { UploadCloud, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { MediaInput } from "@/engine";
+import { isNative } from "@/engine";
+import { basename, onNativeFileDrop, pickVideoFile } from "@/lib/native";
 
 interface UploadZoneProps {
-  onFile: (file: File) => void;
+  onSelect: (input: MediaInput) => void;
   disabled?: boolean;
 }
 
 const ACCEPT = "video/*,.mkv,.mov,.avi,.webm,.mp4,.m4v,.wmv,.flv";
+const native = isNative();
 
-export function UploadZone({ onFile, disabled }: UploadZoneProps) {
+export function UploadZone({ onSelect, disabled }: UploadZoneProps) {
   const [drag, setDrag] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const dragDepth = React.useRef(0);
 
-  const handleFiles = (files: FileList | null) => {
+  // Native: files come from Tauri's OS drag-drop (HTML drop has no path).
+  React.useEffect(() => {
+    if (!native) return;
+    let unlisten: (() => void) | undefined;
+    let active = true;
+    onNativeFileDrop({
+      onHover: (over) => setDrag(over),
+      onDrop: (paths) => {
+        setDrag(false);
+        const p = paths[0];
+        if (p && !disabled) onSelect({ name: basename(p), size: 0, path: p });
+      },
+    }).then((fn) => {
+      if (active) unlisten = fn;
+      else fn();
+    });
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, [onSelect, disabled]);
+
+  const openPicker = async () => {
+    if (disabled) return;
+    if (native) {
+      const p = await pickVideoFile();
+      if (p) onSelect({ name: basename(p), size: 0, path: p });
+    } else {
+      inputRef.current?.click();
+    }
+  };
+
+  const handleWebFiles = (files: FileList | null) => {
     const file = files?.[0];
-    if (file) onFile(file);
+    if (file) onSelect({ name: file.name, size: file.size, file });
   };
 
   return (
@@ -36,14 +72,14 @@ export function UploadZone({ onFile, disabled }: UploadZoneProps) {
         e.preventDefault();
         dragDepth.current = 0;
         setDrag(false);
-        if (!disabled) handleFiles(e.dataTransfer.files);
+        // Native drops are handled by the Tauri listener above.
+        if (!native && !disabled) handleWebFiles(e.dataTransfer.files);
       }}
-      onClick={() => !disabled && inputRef.current?.click()}
+      onClick={() => void openPicker()}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if ((e.key === "Enter" || e.key === " ") && !disabled)
-          inputRef.current?.click();
+        if (e.key === "Enter" || e.key === " ") void openPicker();
       }}
       className={cn(
         "group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-16 text-center transition-all duration-150",
@@ -54,13 +90,15 @@ export function UploadZone({ onFile, disabled }: UploadZoneProps) {
         disabled && "pointer-events-none opacity-50",
       )}
     >
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPT}
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
+      {!native && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPT}
+          className="hidden"
+          onChange={(e) => handleWebFiles(e.target.files)}
+        />
+      )}
       <div
         className={cn(
           "mb-5 flex size-14 items-center justify-center rounded-2xl border border-border bg-bg-elevated text-fg-muted shadow-sm transition-all duration-150",
@@ -68,11 +106,7 @@ export function UploadZone({ onFile, disabled }: UploadZoneProps) {
           drag && "text-fg scale-110",
         )}
       >
-        {drag ? (
-          <Film className="size-6" />
-        ) : (
-          <UploadCloud className="size-6" />
-        )}
+        {drag ? <Film className="size-6" /> : <UploadCloud className="size-6" />}
       </div>
       <p className="text-[15px] font-medium text-fg">
         {drag ? "Drop to load your video" : "Drag & drop a video"}

@@ -3,6 +3,7 @@ import type {
   CompressRequest,
   CompressResult,
   LogLine,
+  MediaInput,
   Progress,
   VideoInfo,
 } from "./types";
@@ -33,14 +34,13 @@ export class NativeEngine implements CompressEngine {
     this.ready = true;
   }
 
-  async probe(file: File): Promise<VideoInfo> {
+  async probe(input: MediaInput): Promise<VideoInfo> {
     const { invoke } = await import("@tauri-apps/api/core");
-    const path = filePath(file);
-    return invoke<VideoInfo>("probe_video", { path });
+    return invoke<VideoInfo>("probe_video", { path: nativePath(input) });
   }
 
   async compress(
-    file: File,
+    input: MediaInput,
     req: CompressRequest,
     handlers: {
       onProgress?: (p: Progress) => void;
@@ -71,7 +71,7 @@ export class NativeEngine implements CompressEngine {
     try {
       const outPath = await invoke<string>("compress_video", {
         jobId,
-        path: filePath(file),
+        path: nativePath(input),
         plan,
         hardwareAccel: req.hardwareAccel,
       });
@@ -95,9 +95,10 @@ export class NativeEngine implements CompressEngine {
   }
 }
 
-/** Tauri exposes the real filesystem path via a non-standard File field. */
-function filePath(file: File): string {
-  const p = (file as unknown as { path?: string }).path;
-  if (!p) throw new Error("Native engine requires a real file path");
-  return p;
+/** The native engine drives FFmpeg by path, supplied via dialog/drag-drop. */
+function nativePath(input: MediaInput): string {
+  if (!input.path) {
+    throw new Error("Native engine needs a file path — open the video via the picker.");
+  }
+  return input.path;
 }

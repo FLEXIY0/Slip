@@ -1,21 +1,38 @@
 import * as React from "react";
 import { Play, Pause, X, Clock, Maximize2, FileVideo } from "lucide-react";
-import type { VideoInfo } from "@/engine/types";
+import type { MediaInput, VideoInfo } from "@/engine/types";
+import { mediaSrc } from "@/lib/native";
 import { cn, formatBytes, formatDuration } from "@/lib/utils";
 import { Button } from "./ui/button";
 
 interface VideoPreviewProps {
-  file: File;
+  input: MediaInput;
   info: VideoInfo | null;
   onRemove: () => void;
 }
 
-export function VideoPreview({ file, info, onRemove }: VideoPreviewProps) {
-  const url = React.useMemo(() => URL.createObjectURL(file), [file]);
+export function VideoPreview({ input, info, onRemove }: VideoPreviewProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = React.useState(false);
+  const [url, setUrl] = React.useState("");
+  const displaySize = input.size || info?.sizeBytes || 0;
 
-  React.useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  React.useEffect(() => {
+    let objectUrl = "";
+    let active = true;
+    mediaSrc(input).then((src) => {
+      if (!active) {
+        if (src.startsWith("blob:")) URL.revokeObjectURL(src);
+        return;
+      }
+      if (src.startsWith("blob:")) objectUrl = src;
+      setUrl(src);
+    });
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [input]);
 
   const toggle = () => {
     const v = videoRef.current;
@@ -70,12 +87,14 @@ export function VideoPreview({ file, info, onRemove }: VideoPreviewProps) {
       <div className="flex flex-col gap-2.5 p-3.5">
         <div className="flex items-center gap-2">
           <FileVideo className="size-4 shrink-0 text-fg-subtle" />
-          <p className="truncate text-[13px] font-medium text-fg" title={file.name}>
-            {file.name}
+          <p className="truncate text-[13px] font-medium text-fg" title={input.name}>
+            {input.name}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-2xs text-fg-muted">
-          <Meta icon={<FileVideo className="size-3" />} value={formatBytes(file.size)} />
+          {displaySize > 0 && (
+            <Meta icon={<FileVideo className="size-3" />} value={formatBytes(displaySize)} />
+          )}
           {info && info.durationSec > 0 && (
             <Meta
               icon={<Clock className="size-3" />}

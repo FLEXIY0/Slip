@@ -6,6 +6,7 @@ import {
   estimateQualityScore,
   type CompressResult,
   type LogLine,
+  type MediaInput,
   type Progress,
   type QualityMode,
   type ResolutionCap,
@@ -24,7 +25,7 @@ export function useCompressor() {
   const settings = useApp((s) => s.settings);
   const addHistory = useApp((s) => s.addHistory);
 
-  const [file, setFileState] = React.useState<File | null>(null);
+  const [source, setSourceState] = React.useState<MediaInput | null>(null);
   const [info, setInfo] = React.useState<VideoInfo | null>(null);
   const [phase, setPhase] = React.useState<Phase>("empty");
   const [targetBytes, setTargetBytes] = React.useState(10 * 1024 * 1024);
@@ -97,10 +98,10 @@ export function useCompressor() {
     }
   }, [setSettings]);
 
-  const setFile = React.useCallback(
-    async (f: File) => {
+  const setSource = React.useCallback(
+    async (src: MediaInput) => {
       abortRef.current?.abort();
-      setFileState(f);
+      setSourceState(src);
       setInfo(null);
       setResult(null);
       setLogs([]);
@@ -109,13 +110,17 @@ export function useCompressor() {
       try {
         const engine = getEngine();
         if (!engine.isReady()) await engine.load(log);
-        const probed = await engine.probe(f);
+        const probed = await engine.probe(src);
         setInfo(probed);
+        // Native path selection has no size upfront — fill it from the probe.
+        if (!src.size && probed.sizeBytes) {
+          setSourceState({ ...src, size: probed.sizeBytes });
+        }
         setProgress({ stage: "idle", ratio: 0 });
         log({
           ts: Date.now(),
           level: "info",
-          text: `Loaded ${f.name} · ${probed.width}×${probed.height} · ${probed.durationSec.toFixed(1)}s`,
+          text: `Loaded ${src.name} · ${probed.width}×${probed.height} · ${probed.durationSec.toFixed(1)}s`,
         });
       } catch (err) {
         log({ ts: Date.now(), level: "error", text: String(err) });
@@ -126,9 +131,15 @@ export function useCompressor() {
     [log],
   );
 
+  /** Web entry point — a File from an <input> or HTML drag-drop. */
+  const setFile = React.useCallback(
+    (f: File) => setSource({ name: f.name, size: f.size, file: f }),
+    [setSource],
+  );
+
   const clear = React.useCallback(() => {
     abortRef.current?.abort();
-    setFileState(null);
+    setSourceState(null);
     setInfo(null);
     setResult(null);
     setLogs([]);
@@ -153,7 +164,7 @@ export function useCompressor() {
   );
 
   const start = React.useCallback(async () => {
-    if (!file || !info) return;
+    if (!source || !info) return;
     const controller = new AbortController();
     abortRef.current = controller;
     setPhase("working");
@@ -164,7 +175,7 @@ export function useCompressor() {
       const engine = getEngine();
       if (!engine.isReady()) await engine.load(log);
       const res = await engine.compress(
-        file,
+        source,
         {
           targetBytes,
           info,
@@ -183,9 +194,10 @@ export function useCompressor() {
       setPhase("done");
 
       const underLimit = res.bytes <= targetBytes;
+      const inputBytes = source.size || info.sizeBytes;
       addHistory({
-        name: file.name,
-        inputBytes: file.size,
+        name: source.name,
+        inputBytes,
         outputBytes: res.bytes,
         targetBytes,
         durationSec: info.durationSec,
@@ -199,7 +211,7 @@ export function useCompressor() {
       if (underLimit) {
         toast.success(
           "Compressed under limit",
-          `Saved ${percentSaved(file.size, res.bytes)}% · fits in your target.`,
+          `Saved ${percentSaved(inputBytes, res.bytes)}% · fits in your target.`,
         );
       } else {
         toast.info(
@@ -220,7 +232,7 @@ export function useCompressor() {
       setProgress({ stage: "error", ratio: 0 });
     }
   }, [
-    file,
+    source,
     info,
     targetBytes,
     resolution,
@@ -236,21 +248,21 @@ export function useCompressor() {
   }, []);
 
   const download = React.useCallback(() => {
-    if (!result || !file) return;
+    if (!result || !source) return;
     const blob = new Blob([result.data.slice() as unknown as BlobPart], {
       type: result.mime,
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = outputName(file.name, result.ext);
+    a.download = outputName(source.name, result.ext);
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }, [result, file]);
+  }, [result, source]);
 
   const share = React.useCallback(async () => {
-    if (!result || !file) return;
-    const shareFile = new File([result.data.slice() as unknown as BlobPart], outputName(file.name, result.ext), {
+    if (!result || !source) return;
+    const shareFile = new File([result.data.slice() as unknown as BlobPart], outputName(source.name, result.ext), {
       type: result.mime,
     });
     const nav = navigator as Navigator & {
@@ -265,10 +277,10 @@ export function useCompressor() {
       }
     }
     download();
-  }, [result, file, download]);
+  }, [result, source, download]);
 
   return {
-    file,
+    source,
     info,
     phase,
     targetBytes,
@@ -283,6 +295,7 @@ export function useCompressor() {
     plan,
     qualityScore,
     setFile,
+    setSource,
     clear,
     start,
     cancel,
