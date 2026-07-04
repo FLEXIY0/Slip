@@ -5,6 +5,10 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# Required so tauri-action can create a GitHub Release when built from a tag.
+permissions:
+  contents: write
+
 jobs:
   desktop:
     name: ${{ matrix.name }}
@@ -50,45 +54,32 @@ jobs:
 
       - run: npm ci
 
+      # Build the app. A GitHub Release is only created/published when the
+      # workflow runs from a version tag (refs/tags/v*). On branch pushes or
+      # manual runs, tagName is empty, so tauri-action just builds — no release,
+      # which avoids the "Resource not accessible by integration" error.
       - name: Build Slip
+        id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --target ${{ matrix.target }}
-          tagName: ${{ github.ref_name }}
-          releaseName: "Slip ${{ github.ref_name }}"
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('Slip {0}', github.ref_name) || '' }}
           releaseDraft: true
           prerelease: false
 
-  android:
-    name: Android (.apk)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Always make the installers downloadable from the run itself.
+      # The bundle dir holds .msi/.exe (Windows), .dmg/.app (macOS),
+      # .AppImage/.deb/.rpm (Linux) — exactly the paths tauri prints.
+      - name: Upload installers as artifacts
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 20
-          cache: npm
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android,armv7-linux-androideabi
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - uses: android-actions/setup-android@v3
-      - run: npm ci
-      - name: Build APK
-        run: |
-          npm run tauri android init --ci || true
-          npm run tauri android build -- --apk
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: slip-android
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          name: slip-${{ matrix.target }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/**
           if-no-files-found: warn
+          retention-days: 14
 
   web:
     name: Web (PWA)
@@ -105,3 +96,4 @@ jobs:
         with:
           name: slip-web
           path: dist
+          retention-days: 14

@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 
 use compress::EncodePlan;
 use probe::VideoInfo;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 
 /// Tracks in-flight jobs so they can be canceled by id.
 #[derive(Default)]
