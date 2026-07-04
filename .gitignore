@@ -36,6 +36,10 @@ pnpm-debug.log*
 .env.*
 !.env.example
 
+# Python (icon generator)
+__pycache__/
+*.pyc
+
 # Misc
 .tmp
 node_modules/.tmp
