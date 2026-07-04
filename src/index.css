@@ -1,0 +1,133 @@
+@import url("https://rsms.me/inter/inter.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ────────────────────────────────────────────────────────────────
+   Slip design tokens
+   Monochrome. Gray is the accent. Green = success, red = fatal only.
+   All values are HSL channels so Tailwind's <alpha-value> works.
+   ──────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Light theme (default) */
+    --bg: 0 0% 100%; /* #FFFFFF */
+    --bg-subtle: 0 0% 97.3%; /* #F8F8F8 */
+    --bg-elevated: 0 0% 100%;
+    --bg-inset: 0 0% 95%; /* #F2F2F2 */
+
+    --fg: 0 0% 7%; /* #111111 */
+    --fg-muted: 220 9% 40%; /* #57606a */
+    --fg-subtle: 215 8% 55%; /* #8b949e */
+
+    --border: 0 0% 92%; /* #EAEAEA */
+    --border-strong: 0 0% 82%;
+    --ring: 0 0% 7%;
+
+    /* Accent = high-contrast monochrome (black on light) */
+    --accent: 0 0% 7%;
+    --accent-fg: 0 0% 100%;
+
+    --success: 137 66% 30%; /* #1a7f37 */
+    --success-fg: 0 0% 100%;
+    --danger: 356 72% 47%; /* #cf222e */
+    --danger-fg: 0 0% 100%;
+
+    --shadow: 0 0% 0%;
+  }
+
+  .dark {
+    --bg: 0 0% 0%; /* #000000 */
+    --bg-subtle: 0 0% 5.1%; /* #0d0d0d */
+    --bg-elevated: 0 0% 7%; /* #111111 */
+    --bg-inset: 0 0% 9.4%; /* #181818 */
+
+    --fg: 0 0% 98%; /* near #FFFFFF */
+    --fg-muted: 0 0% 63%; /* #a0a0a0 */
+    --fg-subtle: 0 0% 42%; /* #6a6a6a */
+
+    --border: 0 0% 14%; /* #242424 */
+    --border-strong: 0 0% 22%;
+    --ring: 0 0% 90%;
+
+    --accent: 0 0% 98%;
+    --accent-fg: 0 0% 7%;
+
+    --success: 132 52% 41%; /* #2ea043 */
+    --success-fg: 0 0% 100%;
+    --danger: 3 90% 64%; /* #f85149 */
+    --danger-fg: 0 0% 7%;
+
+    --shadow: 0 0% 0%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01";
+    font-variation-settings: normal;
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    font-synthesis-weight: none;
+  }
+
+  /* Thin, calm scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border-strong;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-fg-subtle;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::selection {
+    @apply bg-fg/90 text-bg;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring/70 ring-offset-2 ring-offset-bg;
+  }
+}
+
+@layer utilities {
+  .no-drag {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+  /* Draggable native title-bar region for Tauri */
+  .drag-region {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+  .no-drag-region {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .grid-lines {
+    background-image: radial-gradient(
+      hsl(var(--fg) / 0.04) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+  }
+}

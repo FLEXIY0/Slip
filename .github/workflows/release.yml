@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  desktop:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS (Intel)
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            librsvg2-dev libayatana-appindicator3-dev patchelf ffmpeg
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build Slip
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --target ${{ matrix.target }}
+          tagName: ${{ github.ref_name }}
+          releaseName: "Slip ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+
+  android:
+    name: Android (.apk)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - name: Build APK
+        run: |
+          npm run tauri android init --ci || true
+          npm run tauri android build -- --apk
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slip-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+
+  web:
+    name: Web (PWA)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slip-web
+          path: dist
