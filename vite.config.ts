@@ -6,6 +6,8 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig({
+  // "/" for Vercel/Tauri (served at root); "/<repo>/" for GitHub Pages.
+  base: process.env.VITE_BASE || "/",
   plugins: [react()],
   resolve: {
     alias: {

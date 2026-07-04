@@ -1,0 +1,37 @@
+name: Deploy Web (Vercel)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "src-tauri/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+# Requires three repo secrets (Settings → Secrets and variables → Actions):
+#   VERCEL_TOKEN        — Account token (vercel.com/account/tokens)
+#   VERCEL_ORG_ID       — from `vercel link` → .vercel/project.json
+#   VERCEL_PROJECT_ID   — from `vercel link` → .vercel/project.json
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    name: Production deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy to production
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

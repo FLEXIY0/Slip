@@ -1,6 +1,5 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "//": "Windows-only overrides. Bundles FFmpeg as a sidecar so the installer works out of the box. Populated by `node scripts/fetch-ffmpeg.mjs` before build.",
   "bundle": {
     "externalBin": ["binaries/ffmpeg", "binaries/ffprobe"]
   }

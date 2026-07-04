@@ -1,7 +1,11 @@
 // Minimal offline shell for the Slip PWA.
 // The heavy ffmpeg-core is cached on first use so subsequent visits work offline.
+// Paths are resolved against the SW scope so this works at "/" (Vercel) or
+// "/<repo>/" (GitHub Pages) with no changes.
 const CACHE = "slip-v1";
-const SHELL = ["/", "/index.html", "/slip.svg", "/manifest.webmanifest"];
+const scope = self.registration.scope;
+const rel = (p) => new URL(p, scope).href;
+const SHELL = ["./", "index.html", "slip.svg", "manifest.webmanifest"].map(rel);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
@@ -38,7 +42,7 @@ self.addEventListener("fetch", (event) => {
   // Network-first for navigations, fall back to cached shell offline.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() => caches.match("/index.html")),
+      fetch(request).catch(() => caches.match(rel("index.html"))),
     );
   }
 });

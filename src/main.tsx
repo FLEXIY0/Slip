@@ -10,8 +10,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 // Register the PWA service worker in production web builds only.
+// BASE_URL makes this work under any deploy path (root on Vercel, /<repo>/ on Pages).
 if ("serviceWorker" in navigator && import.meta.env.PROD && !("__TAURI_INTERNALS__" in window)) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    const base = import.meta.env.BASE_URL;
+    navigator.serviceWorker.register(`${base}sw.js`, { scope: base }).catch(() => {});
   });
 }
