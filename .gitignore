@@ -46,3 +46,6 @@ __pycache__/
 # Misc
 .tmp
 node_modules/.tmp
+
+# TypeScript incremental build info
+*.tsbuildinfo
