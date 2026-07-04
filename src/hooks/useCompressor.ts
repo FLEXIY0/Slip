@@ -247,15 +247,40 @@ export function useCompressor() {
     abortRef.current?.abort();
   }, []);
 
-  const download = React.useCallback(() => {
+  const download = React.useCallback(async () => {
     if (!result || !source) return;
+    const filename = outputName(source.name, result.ext);
+
+    // Native: the <a download> trick doesn't work in a Tauri webview — open a
+    // real Save dialog and write the bytes where the user chooses.
+    if (isNative()) {
+      try {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const dest = await save({
+          defaultPath: filename,
+          filters: [{ name: "Video", extensions: [result.ext] }],
+        });
+        if (!dest) return;
+        const { writeFile } = await import("@tauri-apps/plugin-fs");
+        await writeFile(dest, result.data);
+        const { openPath } = await import("@tauri-apps/plugin-opener");
+        toast.success("Saved", dest);
+        // Reveal the containing folder so the file is easy to find.
+        void openPath(dest.replace(/[\\/][^\\/]+$/, "")).catch(() => {});
+      } catch (err) {
+        toast.error("Couldn't save the file", String(err));
+      }
+      return;
+    }
+
+    // Web: object-URL download.
     const blob = new Blob([result.data.slice() as unknown as BlobPart], {
       type: result.mime,
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = outputName(source.name, result.ext);
+    a.download = filename;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }, [result, source]);
