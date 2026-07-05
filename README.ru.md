@@ -14,7 +14,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-111?style=flat-square)
 ![FFmpeg](https://img.shields.io/badge/FFmpeg-powered-111?style=flat-square)
 
-🌐 **[English](README.md)** | 🇷🇺 **Русский**
+**[English](README.md)** | **Русский**
 
 <br />
 
@@ -165,7 +165,7 @@ python3 scripts/gen_icons.py     # затем: npm run tauri icon src-tauri/icon
 
 ---
 
-## 🏷️ Теги и ключевые слова (SEO & Promotion)
+## Теги и ключевые слова (SEO & Promotion)
 
 Сжатие видео для Discord, сжать видео для почты, уменьшить размер видео онлайн, оффлайн сжатие видео, компрессор видео, tauri video compressor, ffmpeg wasm compressor, free video compressor, open source video compressor, local video encoder, discord video size limit, compress video to 10mb, compress video to 25mb, tauri app, react video compressor, rust video encoder, ffmpeg GUI, tauri 2, tauri react ts, local-first app.
 
