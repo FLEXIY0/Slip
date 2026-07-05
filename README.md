@@ -16,6 +16,8 @@ Drag a video, choose a target, press Compress, download the result.
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-111?style=flat-square)
 ![FFmpeg](https://img.shields.io/badge/FFmpeg-powered-111?style=flat-square)
 
+🌐 **English** | 🇷🇺 **[Русский](README.ru.md)**
+
 <br />
 
 <img src="assets/screenshots/landing.png" width="820" alt="Slip landing" />
@@ -172,6 +174,12 @@ consumed through Tailwind semantic classes (`bg`, `fg`, `border`, `accent`…),
 so the same class resolves correctly in both light and dark themes.
 
 <br />
+
+---
+
+## 🏷️ Tags & Keywords (SEO & Promotion)
+
+video compressor, video compression, ffmpeg, tauri, react, wasm, ffmpeg-wasm, desktop app, pwa, video converter, compress video, discord, discord compressor, rust, typescript, cross-platform, utility, open-source, developer-tools, local-first app.
 
 <div align="center">
 
